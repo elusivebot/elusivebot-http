@@ -18,9 +18,13 @@
   },
   "homepage": "https://github.com/elusivebot/elusivebot-http#readme",
   "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
     "kafkajs": "^2.2.4"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.1",
     "typescript": "^5.4.5"
   }
 }
