@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -ex
+
+./bin/schema/bundle
+
+npm run build
+
+sudo docker build -t docker.degrendel.com/elusivebot/http:latest .

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -ex
+
+PREFIX=`npm config get prefix`
+PKG=`readlink -f $PREFIX/lib/node_modules/elusivebot-schema`
+
+npm install $PKG --save=false --install-links
+
+
