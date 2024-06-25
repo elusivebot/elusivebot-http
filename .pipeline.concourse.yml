@@ -6,7 +6,6 @@ jobs:
   - task: build-schema
     config:
       platform: linux
-      platform: linux
       caches:
       - path: $HOME/.m2/repository
       - path: $HOME/.gradle/caches/
@@ -36,15 +35,43 @@ jobs:
           set -x
           cd elusivebot-schema-git
           ./gradlew build
-          cp -r typescript/pkg ../../../elusivebot-schema-node
+          cp -r typescript/pkg/* ../elusivebot-schema-node/
 
   - get: elusivebot-http-git
     trigger: true
   - task: build-nodejs
     config:
       platform: linux
+      # TODO: This directory contains core NodeJS packages in the base container, however Concourse always sets cache
+      # directories to empty. >:c
+      #
+      # A work around is to cache a different directory, copy the container's node_modules to it as part of
+      # the build script, and symlink /usr/local/lib/node_modules/ to the cache.  Along the lines of:
+      #caches:
+      #- path: /node_modules/
+      # run:
+      # - cp -r /usr/local/lib/node_modules/* /node_modules/
+      # - rm -rf /usr/local/lib/node_modules
+      # - ln -s /node_modules /usr/local/lib/node_modules
+      #
+      # Shout out to Bash, which reports a very unhelpful error message from the broken /usr/local/bin/npm symlink
+      #
+      # HOWEVER, this might eventually run into issues with a 'security' feature of NPM.
+      # https://github.com/npm/cli/issues/3669
+      #
+      # npm ci and npm run seem fine, though other commands (npm link) may trigger this.  Does anyone in the
+      # Javascript ecosystem have any idea what they are doing?
+      #
+      # If this comes up, ia  workaround (sigh) might be to manually copy everything to/from the cache node_modules
+      # and container node_modules, though that risks conflicts between packages in container node_modules and stale
+      # copies in the cache.
+      #
+      # Honestly, I'm impressed how much worse NodeJS's node_modules gig is compared to Maven's .m2
+      #
+      #caches:
+      #- path: /usr/local/lib/node_modules/
       caches:
-      - path: /usr/local/lib/node_modules/
+      - path: /node_modules/
       inputs:
       - name: elusivebot-http-git
       - name: elusivebot-schema-node
@@ -62,10 +89,12 @@ jobs:
         - -c
         - |
           set -ex
+          cp -r /usr/local/lib/node_modules/* /node_modules/
+          rm -rf /usr/local/lib/node_modules
+          ln -s /node_modules /usr/local/lib/node_modules
           cd elusivebot-schema-node
           npm ci
           npm run build
-          npm link
           cd ../elusivebot-http-git
           npm ci
           npm install ../elusivebot-schema-node --save=false --install-links
