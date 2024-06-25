@@ -5,8 +5,8 @@ WORKDIR /home/node/service
 
 USER node
 COPY package*.json .
-COPY dist .
-COPY node_modules .
+COPY dist dist
+COPY node_modules node_modules
 
 CMD ["node", "./dist/index.js"]
 
