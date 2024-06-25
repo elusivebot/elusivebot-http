@@ -1,0 +1,120 @@
+jobs:
+- name: elusivebot-http
+  plan:
+  - get: elusivebot-schema-git
+    trigger: true
+  - task: build-schema
+    config:
+      platform: linux
+      platform: linux
+      caches:
+      - path: $HOME/.m2/repository
+      - path: $HOME/.gradle/caches/
+      - path: $HOME/.gradle/wrapper/
+      inputs:
+      - name: elusivebot-schema-git
+      outputs:
+      - name: elusivebot-schema-node
+      image_resource:
+        name: eclipse-temurin-17-jdk
+        type: registry-image
+        source:
+          repository: eclipse-temurin
+          tag: 17-jdk
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e
+          mkdir -p $HOME/.gradle
+          touch $HOME/.gradle/gradle.properties
+          chmod 600 $HOME/.gradle/gradle.properties
+          echo "internalMavenUrl=((maven.url))" > $HOME/.gradle/gradle.properties
+          echo "internalMavenUsername=((maven.username))" >> $HOME/.gradle/gradle.properties
+          echo "internalMavenPassword=((maven.password))" >> $HOME/.gradle/gradle.properties
+          set -x
+          cd elusivebot-schema-git
+          ./gradlew build
+          cp -r typescript/pkg ../../../elusivebot-schema-node
+
+  - get: elusivebot-http-git
+    trigger: true
+  - task: build-nodejs
+    config:
+      platform: linux
+      caches:
+      - path: /usr/local/lib/node_modules/
+      inputs:
+      - name: elusivebot-http-git
+      - name: elusivebot-schema-node
+      outputs:
+      - name: elusivebot-http-node
+      image_resource:
+        name: node-20
+        type: registry-image
+        source:
+          repository: node
+          tag: 20
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -ex
+          cd elusivebot-schema-node
+          npm ci
+          npm run build
+          npm link
+          cd ../elusivebot-http-git
+          npm ci
+          npm install ../elusivebot-schema-node --save=false --install-links
+          npm run build
+          cp -r node_modules Dockerfile package*.json dist ../elusivebot-http-node
+
+  - task: build-image
+    privileged: true
+    config:
+      platform: linux
+      caches:
+      - path: cache
+      image_resource:
+        type: registry-image
+        source:
+          repository: concourse/oci-build-task
+      inputs:
+      - name: elusivebot-http-node
+      outputs:
+      - name: image
+      params:
+        CONTEXT: elusivebot-http-node
+      run:
+        path: build
+  - put: elusivebot-http-image
+    params:
+      image: image/image.tar
+
+resources:
+- name: elusivebot-http-git
+  type: git
+  icon: github
+  source:
+    uri: https://github.com/elusivebot/elusivebot-http.git
+    username: ((github.username))
+    password: ((github.password))
+- name: elusivebot-schema-git
+  type: git
+  icon: github
+  source:
+    uri: https://github.com/elusivebot/elusivebot-schema.git
+    username: ((github.username))
+    password: ((github.password))
+- name: elusivebot-http-image
+  type: registry-image
+  icon: docker
+  source:
+    repository: ((docker.host))/elusivebot/http
+    username: ((docker.username))
+    password: ((docker.password))
+    tag: latest
+
