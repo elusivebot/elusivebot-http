@@ -2,4 +2,6 @@
 
 set -ex
 
+./bin/schema/link
+
 npm run build
