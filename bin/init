@@ -2,4 +2,13 @@
 
 set -ex
 
+if [ "$PWD" != "$1" ]; then
+        mkdir -p $1
+        for target in bin jest.config.ts package-lock.json package.json src tsconfig.json; do
+                ln -s $PWD/$target $1/$target
+        done
+        cd $1
+fi
+
 npm install
+./bin/schema/link
