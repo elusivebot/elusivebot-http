@@ -4,8 +4,10 @@ set -ex
 
 if [ "$PWD" != "$1" ]; then
         mkdir -p $1
-        for target in bin jest.config.ts package-lock.json package.json src tsconfig.json; do
-                ln -s $PWD/$target $1/$target
+        for target in bin Dockerfile jest.config.ts package-lock.json package.json src tsconfig.json; do
+                if [ ! -L $1/$target ]; then
+			ln -s $PWD/$target $1/$target
+		fi
         done
         cd $1
 fi
