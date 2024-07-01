@@ -6,4 +6,9 @@ set -ex
 
 npm run build
 
-sudo docker build -t docker.degrendel.com/elusivebot/http:latest .
+cp -L package.json .package.json
+cp -L package-lock.json .package-lock.json
+
+sudo docker build -t docker.degrendel.com/elusivebot/http:latest -f `readlink -f Dockerfile` .
+
+rm -f .package.json .package-lock.json 
