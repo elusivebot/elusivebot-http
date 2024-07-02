@@ -7,6 +7,9 @@ import WebSocket from 'ws';
 
 dotenv.config();
 
+const httpPort: number = Number(process.env.HTTP_PORT) || 8080;
+const httpListen = process.env.HTTP_LISTEN || 'localhost';
+
 const kafkaClientId = process.env.KAFKA_CLIENT_ID || 'http';
 
 const kafkaConfig: KafkaConfig = {
@@ -15,8 +18,8 @@ const kafkaConfig: KafkaConfig = {
 };
 const kafka = new Kafka(kafkaConfig);
 
-const producerTopic = process.env.KAFKA_PRODUCER_TOPIC!;
-const consumerTopic = process.env.KAFKA_CONSUMER_TOPIC!;
+const producerTopic = process.env.KAFKA_PRODUCER_TOPIC || 'messages-input';
+const consumerTopic = process.env.KAFKA_CONSUMER_TOPIC || 'messages-output';
 
 const server: Express = express();
 const ExpressWs = expressWs(server);
@@ -44,34 +47,35 @@ app.ws('/chat', function(ws, req) {
     let body: ChatMessage = {
       header: {
         serviceId: 'http',
-        channelId: id,
+        serverId: id,
       },
       message: msg.toString(),
     }
     await producer.send({
       topic: producerTopic,
       messages: [{
+        key: kafkaClientId,
         value: JSON.stringify(body),
       }],
     });
   });
 });
 
-app.listen(process.env.HTTP_PORT || 8080)
+app.listen(httpPort, httpListen);
 
 await consumer.run({
   eachMessage: async ({ topic, partition, message, heartbeat, pause }) => {
-    if (message.key === null) {
-      console.log("Received messages without a key!");
-    } else {
-      let key = message.key!.toString()
+    if (message.key?.toString() === kafkaClientId) {
       if (message.value === null) {
-        console.log("Received message without a body? from %s", key);
-      } else if (!(key in lookups)) {
-        console.log("Received message on %s which doesn't map to a websocket instance!", key);
+        console.log("Received message without a body");
       } else {
         let body: ChatMessage = JSON.parse(message.value!.toString());
-        await lookups[key].send(body.message);
+        let serverId = body.header.serverId;
+        if (serverId !== undefined && !(serverId in lookups)) {
+          console.log("Received message with serverId %s which doesn't map to a websocket instance!", serverId);
+        } else {
+          await lookups[serverId!].send(body.message);
+        }
       }
     }
   },
