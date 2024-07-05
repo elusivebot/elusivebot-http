@@ -133,3 +133,4 @@ dist
 .*.sw*
 .package*.json
 .elusivebot-schema
+._*
