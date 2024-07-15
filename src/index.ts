@@ -43,10 +43,10 @@ app.ws('/chat', function(ws, req) {
   let id = `http-${crypto.randomUUID()}`;
   lookups[id] = ws;
   ws.on('message', async function(msg) {
-    console.log(msg);
+    console.log('Got message from client: %s', msg);
     let body: ChatMessage = {
       header: {
-        serviceId: 'http',
+        serviceId: kafkaClientId,
         serverId: id,
       },
       message: msg.toString(),
@@ -71,10 +71,11 @@ await consumer.run({
       } else {
         let body: ChatMessage = JSON.parse(message.value!.toString());
         let serverId = body.header.serverId;
-        if (serverId !== undefined && !(serverId in lookups)) {
-          console.log("Received message with serverId %s which doesn't map to a websocket instance!", serverId);
+        if (!(serverId && serverId in lookups)) {
+          console.log("Received message with serverId %s which doesn't map to a websocket!", serverId);
         } else {
-          await lookups[serverId!].send(body.message);
+          console.log("Forwarding messages to client %s: %s", serverId, body);
+          await lookups[serverId].send(body.message);
         }
       }
     }
