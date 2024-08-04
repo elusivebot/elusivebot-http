@@ -99,7 +99,9 @@ jobs:
           npm ci
           npm install ../elusivebot-schema-node --save=false --install-links
           npm run build
-          cp -r node_modules Dockerfile package*.json dist ../elusivebot-http-node
+          cp -r node_modules Dockerfile dist ../elusivebot-http-node
+          cp package.json ../elusivebot-http-node/.package.json
+          cp package-lock.json ../elusivebot-http-node/.package-lock.json
 
   - task: build-image
     privileged: true
