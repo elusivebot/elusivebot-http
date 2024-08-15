@@ -122,6 +122,7 @@ jobs:
       run:
         path: build
   - put: elusivebot-http-image
+    no_get: true
     params:
       image: image/image.tar
 
